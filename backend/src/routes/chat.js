@@ -1,204 +1,140 @@
 const express = require("express");
 const router = express.Router();
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const {
-  getAllTransactions,
-  getSummary,
-  createTransaction,
-  updateTransaction,
-  deleteTransaction,
-  getTransactionsByType,
-} = require("../tools");
+const { ChatGoogleGenerativeAI } = require("@langchain/google-genai");
+const { tool } = require("@langchain/core/tools");
+const { HumanMessage, SystemMessage, ToolMessage } = require("@langchain/core/messages");
+const { z } = require("zod");
+const tools_fn = require("../tools");
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// ─── Tool Definitions ─────────────────────────────────────
-const tools = [
+// ─── Definisi Tools pakai Zod Schema ─────────────────────
+const getAllTransactionsTool = tool(
+  async () => await tools_fn.getAllTransactions(),
   {
-    functionDeclarations: [
-      {
-        name: "get_all_transactions",
-        description: "Mengambil semua riwayat transaksi keuangan",
-        parameters: { type: "OBJECT", properties: {} },
-      },
-      {
-        name: "get_summary",
-        description:
-          "Menghitung ringkasan keuangan: total pemasukan, total pengeluaran, dan saldo",
-        parameters: { type: "OBJECT", properties: {} },
-      },
-      {
-        name: "create_transaction",
-        description: "Menambahkan transaksi baru (pemasukan atau pengeluaran)",
-        parameters: {
-          type: "OBJECT",
-          properties: {
-            type: {
-              type: "STRING",
-              description: "'income' untuk pemasukan, 'expense' untuk pengeluaran",
-            },
-            category: {
-              type: "STRING",
-              description: "Kategori transaksi, contoh: makan, transport, gaji",
-            },
-            amount: {
-              type: "NUMBER",
-              description: "Nominal dalam rupiah",
-            },
-            description: {
-              type: "STRING",
-              description: "Keterangan singkat transaksi",
-            },
-            date: {
-              type: "STRING",
-              description: "Tanggal format YYYY-MM-DD, kosongkan untuk hari ini",
-            },
-          },
-          required: ["type", "category", "amount", "description"],
-        },
-      },
-      {
-        name: "update_transaction",
-        description: "Mengupdate transaksi yang sudah ada berdasarkan ID",
-        parameters: {
-          type: "OBJECT",
-          properties: {
-            id: {
-              type: "NUMBER",
-              description: "ID transaksi yang ingin diupdate",
-            },
-            type: { type: "STRING", description: "'income' atau 'expense'" },
-            category: { type: "STRING", description: "Kategori baru" },
-            amount: { type: "NUMBER", description: "Nominal baru" },
-            description: { type: "STRING", description: "Keterangan baru" },
-          },
-          required: ["id"],
-        },
-      },
-      {
-        name: "delete_transaction",
-        description: "Menghapus transaksi berdasarkan ID",
-        parameters: {
-          type: "OBJECT",
-          properties: {
-            id: {
-              type: "NUMBER",
-              description: "ID transaksi yang ingin dihapus",
-            },
-          },
-          required: ["id"],
-        },
-      },
-      {
-        name: "get_transactions_by_type",
-        description: "Mengambil transaksi berdasarkan tipe tertentu saja",
-        parameters: {
-          type: "OBJECT",
-          properties: {
-            type: {
-              type: "STRING",
-              description: "'income' untuk pemasukan, 'expense' untuk pengeluaran",
-            },
-          },
-          required: ["type"],
-        },
-      },
-    ],
-  },
+    name: "get_all_transactions",
+    description: "Mengambil semua riwayat transaksi keuangan",
+    schema: z.object({}),
+  }
+);
+
+const getSummaryTool = tool(
+  async () => await tools_fn.getSummary(),
+  {
+    name: "get_summary",
+    description: "Menghitung ringkasan: total pemasukan, pengeluaran, dan saldo",
+    schema: z.object({}),
+  }
+);
+
+const createTransactionTool = tool(
+  async ({ type, category, amount, description, date }) =>
+    await tools_fn.createTransaction(type, category, amount, description, date),
+  {
+    name: "create_transaction",
+    description: "Menambahkan transaksi baru (pemasukan atau pengeluaran)",
+    schema: z.object({
+      type: z.enum(["income", "expense"]).describe("Jenis transaksi"),
+      category: z.string().describe("Kategori, contoh: makan, transport, gaji"),
+      amount: z.number().describe("Nominal dalam rupiah"),
+      description: z.string().describe("Keterangan singkat transaksi"),
+      date: z.string().optional().describe("Tanggal format YYYY-MM-DD, kosongkan untuk hari ini"),
+    }),
+  }
+);
+
+const updateTransactionTool = tool(
+  async ({ id, type, category, amount, description }) =>
+    await tools_fn.updateTransaction(id, type, category, amount, description),
+  {
+    name: "update_transaction",
+    description: "Mengupdate transaksi yang sudah ada berdasarkan ID",
+    schema: z.object({
+      id: z.number().describe("ID transaksi yang ingin diupdate"),
+      type: z.enum(["income", "expense"]).optional().describe("Jenis baru"),
+      category: z.string().optional().describe("Kategori baru"),
+      amount: z.number().optional().describe("Nominal baru"),
+      description: z.string().optional().describe("Keterangan baru"),
+    }),
+  }
+);
+
+const deleteTransactionTool = tool(
+  async ({ id }) => await tools_fn.deleteTransaction(id),
+  {
+    name: "delete_transaction",
+    description: "Menghapus transaksi berdasarkan ID",
+    schema: z.object({
+      id: z.number().describe("ID transaksi yang ingin dihapus"),
+    }),
+  }
+);
+
+const getTransactionsByTypeTool = tool(
+  async ({ type }) => await tools_fn.getTransactionsByType(type),
+  {
+    name: "get_transactions_by_type",
+    description: "Mengambil transaksi berdasarkan tipe tertentu",
+    schema: z.object({
+      type: z.enum(["income", "expense"]).describe("Tipe transaksi"),
+    }),
+  }
+);
+
+const tools = [
+  getAllTransactionsTool,
+  getSummaryTool,
+  createTransactionTool,
+  updateTransactionTool,
+  deleteTransactionTool,
+  getTransactionsByTypeTool,
 ];
 
-// ─── Tool Executor ────────────────────────────────────────
-async function executeTool(name, args) {
-  console.log(`🔧 Tool dipanggil: ${name} | Args:`, args);
-  switch (name) {
-    case "get_all_transactions":
-      return await getAllTransactions();
-    case "get_summary":
-      return await getSummary();
-    case "create_transaction":
-      return await createTransaction(
-        args.type,
-        args.category,
-        args.amount,
-        args.description,
-        args.date
-      );
-    case "update_transaction":
-      return await updateTransaction(
-        args.id,
-        args.type,
-        args.category,
-        args.amount,
-        args.description
-      );
-    case "delete_transaction":
-      return await deleteTransaction(args.id);
-    case "get_transactions_by_type":
-      return await getTransactionsByType(args.type);
-    default:
-      return { error: `Tool ${name} tidak ditemukan` };
-  }
-}
+// ─── Setup Model ──────────────────────────────────────────
+const model = new ChatGoogleGenerativeAI({
+  model: "gemini-3.6-flash",
+  apiKey: process.env.GEMINI_API_KEY,
+}).bindTools(tools);
 
-// ─── System Prompt ────────────────────────────────────────
-const SYSTEM_PROMPT = `
-Kamu adalah asisten keuangan pribadi bernama FinAI.
-Tugasmu membantu user mengelola riwayat keuangan mereka melalui percakapan.
+const SYSTEM_PROMPT = `Kamu adalah asisten keuangan pribadi bernama FinAI.
+Tugasmu membantu user mengelola riwayat keuangan melalui percakapan.
 Kamu bisa menambah, melihat, mengupdate, dan menghapus transaksi keuangan.
 Selalu gunakan Bahasa Indonesia yang ramah dan mudah dipahami.
 Ketika menyebut nominal uang, gunakan format "Rp10.000" bukan "10000".
-Setelah melakukan aksi (tambah/update/hapus), selalu konfirmasi hasilnya ke user dengan jelas.
-Jika user menyebut nominal seperti "25 ribu", artinya 25000. "1 juta" artinya 1000000.
-`;
+Setelah melakukan aksi (tambah/update/hapus), selalu konfirmasi hasilnya ke user.
+Jika user menyebut "25 ribu" artinya 25000, "1 juta" artinya 1000000.`;
 
-// ─── Agentic Loop ─────────────────────────────────────────
+// ─── Agentic Loop (Jauh Lebih Simple!) ───────────────────
 async function runAgent(userMessage) {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-3.6-flash",
-    systemInstruction: SYSTEM_PROMPT,
-    tools: tools,
-  });
-
-  const history = [
-    {
-      role: "user",
-      parts: [{ text: userMessage }],
-    },
+  const messages = [
+    new SystemMessage(SYSTEM_PROMPT),
+    new HumanMessage(userMessage),
   ];
 
+  // Loop sampai tidak ada tool call lagi
   for (let i = 0; i < 10; i++) {
-    const response = await model.generateContent({
-      contents: history,
-    });
+    const response = await model.invoke(messages);
+    messages.push(response);
 
-    const candidate = response.response.candidates[0];
-    const parts = candidate.content.parts;
-
-    history.push({
-      role: "model",
-      parts: parts,
-    });
-
-    const functionCallPart = parts.find((p) => p.functionCall);
-
-    if (!functionCallPart) {
-      return response.response.text();
+    // Kalau tidak ada tool call, kembalikan jawaban
+    if (!response.tool_calls || response.tool_calls.length === 0) {
+      return response.content;
     }
 
-    const { name, args } = functionCallPart.functionCall;
-    const toolResult = await executeTool(name, args);
+    console.log(`Tools dipanggil: ${response.tool_calls.map(tc => tc.name).join(", ")}`);
 
-    history.push({
-      role: "user",
-      parts: [
-        {
-          functionResponse: {
-            name: name,
-            response: { result: JSON.stringify(toolResult) },
-          },
-        },
-      ],
-    });
+    // Eksekusi semua tool calls secara paralel
+    const toolResults = await Promise.all(
+      response.tool_calls.map(async (tc) => {
+        const selectedTool = tools.find((t) => t.name === tc.name);
+        const result = await selectedTool.invoke(tc.args);
+        return new ToolMessage({
+          tool_call_id: tc.id,
+          content: JSON.stringify(result),
+        });
+      })
+    );
+
+    // Tambahkan semua hasil tool ke messages
+    messages.push(...toolResults);
   }
 
   return "Maaf, saya tidak dapat memproses permintaan tersebut.";
@@ -208,11 +144,9 @@ async function runAgent(userMessage) {
 router.post("/", async (req, res) => {
   try {
     const { message } = req.body;
-
     if (!message) {
       return res.status(400).json({ error: "Message tidak boleh kosong" });
     }
-
     const reply = await runAgent(message);
     res.json({ reply });
   } catch (error) {

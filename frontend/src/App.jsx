@@ -10,11 +10,15 @@ import SummaryCards from "./components/SummaryCards";
 import TransactionTable from "./components/TransactionTable";
 import ChatAgent from "./components/ChatAgent";
 import TransactionForm from "./components/TransactionForm";
+import { Button } from "./components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
+import { Bot, MessageCircle, Plus, RefreshCw, Sparkles, Trash2, Wallet, X } from "lucide-react";
 
 function App() {
   const [transactions, setTransactions] = useState([]);
   const [summary, setSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // State modal form
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -86,81 +90,87 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">💰</span>
+    <div className="min-h-screen bg-[#f6f3ed] text-stone-900">
+      <header className="sticky top-0 z-20 border-b border-stone-200/80 bg-[#f6f3ed]/90 px-5 py-4 backdrop-blur-xl sm:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-teal-700 text-white shadow-lg shadow-teal-900/15">
+              <Wallet className="size-5" />
+            </div>
             <div>
-              <h1 className="font-bold text-slate-800 text-lg leading-none">
-                FinAI
-              </h1>
-              <p className="text-xs text-slate-400">Personal Finance Tracker</p>
+              <h1 className="font-display text-lg font-semibold leading-none tracking-tight">FinAI</h1>
+              <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-stone-500">Money, made visible</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={fetchData}
-              className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+            <Button
+              variant={isChatOpen ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setIsChatOpen((isOpen) => !isOpen)}
+              aria-expanded={isChatOpen}
+              aria-controls="ai-chat-panel"
             >
-              🔄 Refresh
-            </button>
-            <button
-              onClick={handleAdd}
-              className="text-xs bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors"
-            >
-              ➕ Tambah Transaksi
-            </button>
+              {isChatOpen ? <X className="size-3.5" /> : <MessageCircle className="size-3.5" />}
+              <span className="hidden sm:inline">{isChatOpen ? "Tutup AI" : "Buka AI"}</span>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={fetchData}><RefreshCw className="size-3.5" /> Refresh</Button>
+            <Button size="sm" onClick={handleAdd}><Plus className="size-3.5" /> Tambah</Button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-6">
+      <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:py-10">
         {isLoading ? (
-          <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex min-h-100 items-center justify-center">
             <div className="text-center">
-              <p className="text-4xl mb-3 animate-bounce">💰</p>
-              <p className="text-slate-400 text-sm">Memuat data...</p>
+              <div className="mx-auto mb-4 flex size-12 animate-pulse items-center justify-center rounded-2xl bg-teal-100 text-teal-700"><Wallet className="size-6" /></div>
+              <p className="text-sm text-stone-500">Menyiapkan ringkasan keuangan...</p>
             </div>
           </div>
         ) : (
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Kiri: Dashboard */}
-            <div className="flex-1">
+          <div className="space-y-8">
+            <section className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+              <div>
+                <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-teal-700"><Sparkles className="size-3.5" /> Overview</p>
+                <h2 className="font-display max-w-xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">Keuanganmu, <span className="text-teal-700">lebih tenang</span> saat terlihat jelas.</h2>
+                <p className="mt-3 max-w-lg text-sm leading-6 text-stone-500">Pantau arus uang, pahami kebiasaan belanja, dan ambil keputusan berikutnya dengan lebih percaya diri.</p>
+              </div>
+              <div className="hidden items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-xs text-stone-500 shadow-sm md:flex"><span className="size-2 rounded-full bg-emerald-500" /> Data tersinkron</div>
+            </section>
+
+            <div className="flex flex-col gap-6 lg:flex-row">
+            <div className="min-w-0 flex-1">
               <SummaryCards summary={summary} />
 
-              <div className="bg-white rounded-xl border border-slate-200">
-                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <Card className="overflow-hidden">
+                <div className="flex items-center justify-between border-b border-stone-100 px-5 py-5 sm:px-6">
                   <div>
-                    <h2 className="font-semibold text-slate-700">
-                      Riwayat Transaksi
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <h2 className="font-display font-semibold text-stone-900">Riwayat transaksi</h2>
+                    <p className="mt-1 text-xs text-stone-500">
                       {transactions.length} transaksi tercatat
                     </p>
                   </div>
-                  <button
-                    onClick={handleAdd}
-                    className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    ➕ Tambah
-                  </button>
+                  <Button variant="outline" size="sm" onClick={handleAdd}><Plus className="size-3.5" /> Tambah</Button>
                 </div>
                 <TransactionTable
                   transactions={transactions}
                   onEdit={handleEdit}
                   onDelete={handleDeleteClick}
                 />
-              </div>
+              </Card>
             </div>
 
-            {/* Kanan: Chat Agent */}
-            <div className="w-full lg:w-[360px]">
-              <div className="bg-white rounded-xl border border-slate-200 p-5 sticky top-24 h-[calc(100vh-120px)] flex flex-col">
+            {isChatOpen && <div id="ai-chat-panel" className="w-full lg:w-92.5">
+              <Card className="sticky top-24 flex h-[calc(100vh-140px)] min-h-130 flex-col overflow-hidden border-teal-900/10 bg-[#143f3b] text-white shadow-[0_20px_50px_rgba(20,63,59,0.18)]">
+                <CardHeader className="border-b border-white/10 p-5">
+                  <CardTitle className="flex items-center gap-2 text-white"><span className="flex size-8 items-center justify-center rounded-lg bg-amber-300 text-teal-950"><Bot className="size-4" /></span> FinAI assistant</CardTitle>
+                  <CardDescription className="text-teal-100/70">Catat transaksi dengan bahasa sehari-hari.</CardDescription>
+                </CardHeader>
+                <CardContent className="min-h-0 flex-1 p-5">
                 <ChatAgent onTransactionChange={fetchData} />
-              </div>
+                </CardContent>
+              </Card>
+            </div>}
             </div>
           </div>
         )}
@@ -183,13 +193,13 @@ function App() {
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && setDeleteTarget(null)}
         >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+          <div className="w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl">
             <div className="text-center mb-4">
-              <p className="text-4xl mb-3">🗑️</p>
-              <h3 className="font-semibold text-slate-700 mb-1">
+              <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-xl bg-rose-50 text-rose-600"><Trash2 className="size-5" /></div>
+              <h3 className="font-display font-semibold text-stone-900 mb-1">
                 Hapus Transaksi?
               </h3>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm leading-6 text-stone-500">
                 Transaksi{" "}
                 <span className="font-medium text-slate-600">
                   "{deleteTarget.description}"
@@ -201,14 +211,14 @@ function App() {
               <button
                 onClick={() => setDeleteTarget(null)}
                 disabled={isDeleting}
-                className="flex-1 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                className="flex-1 rounded-lg border border-stone-200 py-2.5 text-sm text-stone-600 transition-colors hover:bg-stone-50 disabled:opacity-50"
               >
                 Batal
               </button>
               <button
                 onClick={handleConfirmDelete}
                 disabled={isDeleting}
-                className="flex-1 py-2.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-sm font-medium text-white transition-colors disabled:opacity-50"
+                className="flex-1 rounded-lg bg-rose-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-rose-700 disabled:opacity-50"
               >
                 {isDeleting ? "Menghapus..." : "Ya, Hapus"}
               </button>
